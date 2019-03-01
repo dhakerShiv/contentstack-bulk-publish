@@ -1,17 +1,30 @@
 {
   "name": "contentstack-bulk-publish",
-  "version": "0.0.1",
+  "version": "0.0.2",
   "description": "",
   "main": "index.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1"
   },
-  "keywords": [],
-  "author": "",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/dhakerShiv/contentstack-bulk-publish.git"
+  },
+  "keywords": [
+    "contentstack",
+    "publish",
+    "contenttypes",
+    "assets"
+  ],
+  "author": "dhakerShiv",
   "license": "ISC",
   "dependencies": {
     "request": "^2.88.0",
     "request-promise-native": "^1.0.7",
     "winston": "^3.2.1"
-  }
+  },
+  "bugs": {
+    "url": "https://github.com/dhakerShiv/contentstack-bulk-publish/issues"
+  },
+  "homepage": "https://github.com/dhakerShiv/contentstack-bulk-publish#readme"
 }
