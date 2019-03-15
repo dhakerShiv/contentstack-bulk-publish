@@ -67,10 +67,10 @@ async function getAndPublishAssets (assets) {
 
 function getAssets (folder = "cs_root", skip = 0, limit = 100) {
   print(`\rFetching Assets Entries...`)
-	const options = {
-		url:'https://api.contentstack.io/v3/assets',
-		method: "GET",
-		headers : {
+  const options = {
+    url:'https://api.contentstack.io/v3/assets',
+    method: "GET",
+    headers : {
       "api_key"      : config.api_key,
       "authtoken"    : config.authtoken,
       'Content-Type' : 'application/json'
@@ -105,10 +105,10 @@ async function publishAssets (entries) {
 }
 
 function publishAsset (assetUid) {
-	const options = {
-		url:'https://api.contentstack.io/v3/assets/'+ assetUid +'/publish',
-		method: "POST",
-		headers : {
+  const options = {
+    url:'https://api.contentstack.io/v3/assets/'+ assetUid +'/publish',
+    method: "POST",
+    headers : {
       "api_key"      : config.api_key,
       "authtoken"    : config.authtoken,
       'Content-Type' : 'application/json'
@@ -161,10 +161,10 @@ async function publishContentType (contentType) {
 
 function getEntries (contentTypeUid, skip = 0, limit = 100) {
   print(`\rFetching Entries for ${contentTypeUid}...`)
-	const options = {
-		url:'https://api.contentstack.io/v3/content_types/' + contentTypeUid + '/entries/',
-		method: "GET",
-		headers : {
+  const options = {
+    url:'https://api.contentstack.io/v3/content_types/' + contentTypeUid + '/entries/',
+    method: "GET",
+    headers : {
       "api_key"      : config.api_key,
       "authtoken"    : config.authtoken,
       'Content-Type' : 'application/json'
@@ -198,10 +198,10 @@ async function publishEntries (contentTypeUid, entries) {
 }
 
 function publishEntry (contentTypeUid, entryUid) {
-	const options = {
-		url:'https://api.contentstack.io/v3/content_types/' + contentTypeUid + '/entries/' + entryUid + '/publish',
-		method: "POST",
-		headers : {
+  const options = {
+    url:'https://api.contentstack.io/v3/content_types/' + contentTypeUid + '/entries/' + entryUid + '/publish',
+    method: "POST",
+    headers : {
       "api_key"      : config.api_key,
       "authtoken"    : config.authtoken,
       'Content-Type' : 'application/json'
