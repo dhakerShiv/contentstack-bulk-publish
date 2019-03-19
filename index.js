@@ -2,6 +2,8 @@ const request       = require('request-promise-native')
 const winston       = require('winston')
 let config          = {}
 const recordedInfo  = {}
+const cdnUrl        = "https://cdn.contentstack.io/v3"
+const serverUrl     = "https://api.contentstack.io/v3"
 
 const logger = winston.createLogger({
   format: winston.format.json(),
@@ -56,7 +58,7 @@ async function getAndPublishAssets (assets) {
       // publish assets entries
       publishedCount                   = await publishAssets(response.assets)
       recordedInfo['publishedAssets'] += publishedCount
-      ++skip
+      skip += limit
     }
     catch (err) {
       errorHandler(err)
@@ -65,21 +67,26 @@ async function getAndPublishAssets (assets) {
   recordedInfo["assets"] = {"published": publishedCount}
 }
 
-function getAssets (folder = "cs_root", skip = 0, limit = 100) {
+function getAssets (folder, skip = 0, limit = 100) {
   print(`\rFetching Assets Entries...`)
+
+  const qs =  {
+    skip,
+    limit
+  }
+
+  if (folder)
+    qs.folder = folder
+
   const options = {
-    url:'https://api.contentstack.io/v3/assets',
+    url: cdnUrl + '/assets',
     method: "GET",
     headers : {
       "api_key"      : config.api_key,
       "authtoken"    : config.authtoken,
       'Content-Type' : 'application/json'
     },
-    qs: {
-      folder,
-      skip,
-      limit
-    },
+    qs,
     json: true
   }
   return request(options)
@@ -106,7 +113,7 @@ async function publishAssets (entries) {
 
 function publishAsset (assetUid) {
   const options = {
-    url:'https://api.contentstack.io/v3/assets/'+ assetUid +'/publish',
+    url: serverUrl + '/assets/'+ assetUid +'/publish',
     method: "POST",
     headers : {
       "api_key"      : config.api_key,
@@ -150,7 +157,7 @@ async function publishContentType (contentType) {
       // publish entries
       publishedCount                          = await publishEntries(contentType, response.entries)
       recordedInfo[contentType]['published'] += publishedCount
-      ++skip
+      skip += limit
     }
     catch (err) {
       errorHandler(err)
@@ -162,7 +169,7 @@ async function publishContentType (contentType) {
 function getEntries (contentTypeUid, skip = 0, limit = 100) {
   print(`\rFetching Entries for ${contentTypeUid}...`)
   const options = {
-    url:'https://api.contentstack.io/v3/content_types/' + contentTypeUid + '/entries/',
+    url: cdnUrl + '/content_types/' + contentTypeUid + '/entries/',
     method: "GET",
     headers : {
       "api_key"      : config.api_key,
@@ -199,7 +206,7 @@ async function publishEntries (contentTypeUid, entries) {
 
 function publishEntry (contentTypeUid, entryUid) {
   const options = {
-    url:'https://api.contentstack.io/v3/content_types/' + contentTypeUid + '/entries/' + entryUid + '/publish',
+    url: serverUrl + '/content_types/' + contentTypeUid + '/entries/' + entryUid + '/publish',
     method: "POST",
     headers : {
       "api_key"      : config.api_key,
@@ -228,7 +235,7 @@ function login() {
   print(`\rLogging in...`)
   const options = { 
     method : 'POST',
-    url    : 'https://api.contentstack.io/v3/user-session',
+    url    : serverUrl + '/user-session',
     headers: {
       'content-type': 'application/json' 
     },
@@ -247,7 +254,7 @@ function logout () {
   print(`\rLogging out...`)
   const options = { 
     method : 'DELETE',
-    url    : 'https://api.contentstack.io/v3/user-session',
+    url    : serverUrl + '/user-session',
     headers: {
       'content-type': 'application/json',
       'authtoken'   : config.authtoken,

@@ -28,7 +28,7 @@ publish({
     "contentTypes": ["states", "countries"] // Mention all contentypes to publish
   },
   "assets"      : {
-    "folder"      : "cs_root", // folder uid, default - cs_root, it has all assets
+    "folder"      : "eo92847dhuhdue38", // folder uid, default - cs_root, it has all assets
     "locales"     :["en-us"],  // Mention all locales in array in which you want to publish
     "environments": ["local", "development"] // Mention all environments in which you want to publish 
   }
