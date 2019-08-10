@@ -5,7 +5,7 @@
 This is contentstack headless cms specific only 
 Bulk publish Contenttype Entries and Assets
 
-Notes - It does not publish referenced entries implicitly, so add all contenttypes you want to publish
+New : added support for publising of all referenced/nested entries/assets
 
 Install:
 ```
@@ -19,16 +19,18 @@ An example
 const publish = require('contentstack-bulk-publish').publish
 
 publish({
-  "api_key"     : "your stack api key",
-  "email"       : "your contentstack login email",
-  "password"    : "your contentstack login password",
-  "entries"     : {
-    "locales"     :["en-us"], // Mention all locales in array in which you want to publish
+  "api_key"     : "stack api key",
+  "email"       : "contentstack login email",
+  "password"    : "contentstack login password",
+  "authtoken"   : "user auth token" // You do not need to add email and password if you are adding it
+  "entries"     : { // Remove this if you do not want to publish any Contenttypes
+    "locales"     : ["en-us"], // Mention all locales in array in which you want to publish
     "environments": ["local", "development"], // Mention all environments in which you want to publish 
     "contentTypes": ["states", "countries"] // Mention all contentypes to publish
+    "nested"      : true // It will publish all nested Contenttypes/assets
   },
-  "assets"      : {
-    "folder"      : "eo92847dhuhdue38", // folder uid, default - cs_root, it has all assets
+  "assets"      : { // Remove this if you do not want to publish any assets
+    "folder"      : "eo92847dhuhdue38", // Folder uid, default - cs_root, it has all assets
     "locales"     :["en-us"],  // Mention all locales in array in which you want to publish
     "environments": ["local", "development"] // Mention all environments in which you want to publish 
   }

@@ -4,6 +4,7 @@ let config          = {}
 const recordedInfo  = {}
 const cdnUrl        = "https://cdn.contentstack.io/v3"
 const serverUrl     = "https://api.contentstack.io/v3"
+const allContentTypesSchema = {}
 
 const logger = winston.createLogger({
   format: winston.format.json(),
@@ -21,9 +22,12 @@ async function startProcess (options) {
   if (!config.authtoken || config.authtoken == "")
   {
     config.authtokenExists = false
-    let response = await login()
+    const response = await login()
     config.authtoken = response.user.authtoken  
   }
+
+  if (config.entries.nested)
+    await getAllContenttypes()
 
   if (config.entries && config.entries.contentTypes)
     await publishContentTypes(config.entries.contentTypes)
@@ -107,7 +111,6 @@ async function publishAssets (entries) {
       errorHandler(err)
     }
   }
-
   return count
 }
 
@@ -122,8 +125,8 @@ function publishAsset (assetUid) {
     },
     body: {
       asset: {
-        "environments": config.assets.environments,
-        "locales"     : config.assets.locales
+        "environments": (config.assets || config.entries).environments,
+        "locales"     : (config.assets || config.entries).locales
       }
     },
     json: true
@@ -140,11 +143,11 @@ async function publishContentType (contentType) {
   let response
   let entriesLength                      = 100
   let skip                               = 0
-  const limit                            = 100
+  const limit                            = 1
   let publishedCount                     = 0
-  recordedInfo[contentType]              = {}
-  recordedInfo[contentType]['total']     = 0
-  recordedInfo[contentType]['published'] = 0
+  recordedInfo[contentType]              = recordedInfo[contentType] || {}
+  recordedInfo[contentType]['total']     = recordedInfo[contentType]['total'] || 0
+  recordedInfo[contentType]['published'] = recordedInfo[contentType]['published'] || 0
 
   while (entriesLength == 100)
   {
@@ -192,8 +195,14 @@ async function publishEntries (contentTypeUid, entries) {
   for (let i = 0; i < entries.length; i++)
   {
     try {
+      config.entries.nested &&
+      allContentTypesSchema[contentTypeUid] &&
+      await publishNestedEntries(allContentTypesSchema[contentTypeUid].schema, entries[i])
+
       await publishEntry(contentTypeUid, entries[i].uid)
       ++count
+
+      recordedInfo[contentTypeUid] && 
       print(`\rPublished ${recordedInfo[contentTypeUid]['published'] + count} entries out of ${recordedInfo[contentTypeUid]['total']} of ${contentTypeUid}`)
     }
     catch (err) {
@@ -202,6 +211,120 @@ async function publishEntries (contentTypeUid, entries) {
   }
 
   return count
+}
+
+async function processGroup (schema, entry) {
+  if (!entry[schema.uid])
+    return
+
+  if (!schema.multiple)
+    entry[schema.uid] = [entry[schema.uid]]
+ 
+  const groupArr = entry[schema.uid]
+
+  for (let i = 0; i < groupArr.length; i++)
+  {
+    try {
+      await publishNestedEntries(schema.schema, groupArr[i])
+    }
+    catch (err) {
+      errorHandler(err)
+    }
+  }
+}
+
+async function processReference (schema, entry) {
+  const references = entry[schema.uid]
+
+  if (Array.isArray(references) && references.length)
+  {
+    try {
+      const response = await getEntriesByUids(schema.reference_to, references)
+      await publishEntries(schema.reference_to, response.entries)
+    }
+    catch (err) {
+      errorHandler(err)
+    }      
+  }
+}
+
+async function processBlock (schema, entry) {
+  const blocks = schema.blocks
+  const objectsArr = entry[schema.uid]
+
+  for (let i = 0; i < objectsArr.length; i++)
+  {
+    try {
+      for (let j = 0; j < blocks.length; j++)
+      {
+        objectsArr[i][blocks[j].uid] &&
+        await publishNestedEntries(blocks[j].schema, objectsArr[i][blocks[j].uid])
+      }
+    }
+    catch (err) {
+      errorHandler(err)
+    }
+  }
+}
+
+async function processFile (schema, entry) {
+  const image = entry[schema.uid]
+
+  if (image && image.uid)
+  {
+    try {
+      await publishAsset(image.uid)
+    }
+    catch (err) {
+      errorHandler(err)
+    }
+  }
+}
+
+async function processRTE (schema, entry) {
+  const RTE = entry[schema.uid]
+
+  if (!RTE)
+    return
+
+  let response = RTE.match(/blt[a-z0-9]{16}\/[a-z0-9]+/g)
+  let assetUid
+
+  if (Array.isArray(response))
+  {
+    for (let i = 0; i < response.length; i++)
+    {
+      try {
+        assetUid = response[i].split('/')[1]
+        assetUid && await publishAsset(assetUid)
+      }
+      catch (err) {
+        errorHandler(err)
+      }
+    }
+  }
+}
+
+async function publishNestedEntries (schema, entry) {
+  if (!schema || !entry)
+      return
+
+  for (let i = 0; i < schema.length; i++)
+  {
+    switch (schema[i].data_type)
+    {
+      case "group": await processGroup(schema[i], entry)
+        break
+      case "reference": await processReference(schema[i], entry)
+        break
+      case "blocks": await processBlock(schema[i], entry)
+        break
+      case "file": await processFile(schema[i], entry)
+        break
+      case "text": schema[i].field_metadata.allow_rich_text && await processRTE(schema[i], entry)
+        break
+    }
+  }
 }
 
 function publishEntry (contentTypeUid, entryUid) {
@@ -226,8 +349,9 @@ function publishEntry (contentTypeUid, entryUid) {
 
 function errorHandler (err) {
   logger.log({
-    level: 'error',
-    message: err.message
+    level   : 'error',
+    message : err.message,
+    stack   : err.stack
   })
 }
 
@@ -239,7 +363,7 @@ function login() {
     headers: {
       'content-type': 'application/json' 
     },
-    body: { 
+    body : { 
       user: {
         email   : config.email,
         password: config.password
@@ -267,6 +391,73 @@ function logout () {
 function print (str) {
   process.stdout.clearLine()
   process.stdout.write(str)
+}
+
+async function getAllContenttypes () {
+  let Allresponse   = []
+  let entriesLength = 100
+  let skip          = 0
+  const limit       = 100
+  let response
+
+  while (entriesLength == 100)
+  {
+    try {
+      // get entries
+      response      = await getContenttpes(skip, limit)
+      entriesLength = response.content_types.length
+
+      let uids = response.content_types.map( ele => {
+        allContentTypesSchema[ele.uid] = ele
+        return ele.uid
+      })
+      Allresponse = Allresponse.concat(uids)
+      skip += limit
+    }
+    catch (err) {
+      errorHandler(err)
+    }
+  }
+  return Allresponse
+}
+  
+function getContenttpes (skip = 0, limit = 100) {
+  const options = {
+    url     : "https://cdn.contentstack.io/v3/content_types?include_count=false",
+    method  : "GET",
+    headers : {
+      "api_key"      : config.api_key,
+      "authtoken"    : config.authtoken,
+      'Content-Type' : 'application/json'
+    },
+    qs: {
+      skip,
+      limit
+    },
+    json: true
+  }
+  return request(options)
+}
+
+function getEntriesByUids (contentTypeUid, uids) {
+  const options = {
+    url     : cdnUrl + '/content_types/' + contentTypeUid + '/entries/',
+    method  : "GET",
+    headers : {
+      "api_key"   : config.api_key,
+      "authtoken" : config.authtoken
+    },
+    qs: {
+      locale : "en-us",
+      query  : {
+        uid  : {
+            $in: uids
+        }
+      }
+    },
+    json: true
+  }
+  return request(options)
 }
 
 module.exports.publish = startProcess
