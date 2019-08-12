@@ -143,7 +143,7 @@ async function publishContentType (contentType) {
   let response
   let entriesLength                      = 100
   let skip                               = 0
-  const limit                            = 1
+  const limit                            = 100
   let publishedCount                     = 0
   recordedInfo[contentType]              = recordedInfo[contentType] || {}
   recordedInfo[contentType]['total']     = recordedInfo[contentType]['total'] || 0
